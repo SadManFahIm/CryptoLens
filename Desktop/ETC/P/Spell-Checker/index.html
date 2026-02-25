@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <!-- =============================================
+         BENGALI SPELL CHECKER — Microsoft Word Add-in
+         Author: SadManFahIm
+         Description: Task pane UI for Bengali spell
+         checking inside Microsoft Word using Office.js
+    ============================================= -->
+
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=11" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Bengali Spell Checker — Microsoft Word Add-in"
+    />
+    <title>Bengali Spell Checker</title>
+
+    <!-- ── Development: Disable browser caching ── -->
+    <meta http-equiv="cache-control" content="no-cache, max-age=0" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="pragma" content="no-cache" />
+
+    <!-- ── Google Fonts ── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&family=Syne:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- ── Office Fabric UI ── -->
+    <link
+      rel="stylesheet"
+      href="https://appsforoffice.microsoft.com/fabric/1.0/fabric.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://appsforoffice.microsoft.com/fabric/1.0/fabric.components.min.css"
+    />
+
+    <!-- ── Office.js ── -->
+    <script
+      src="https://appsforoffice.microsoft.com/lib/beta/hosted/office.js"
+      type="text/javascript"
+    ></script>
+
+    <!-- ── Project scripts ── -->
+    <script src="scripts/search.js" type="text/javascript"></script>
+    <script src="app.js" defer></script>
+
+    <style>
+      /* ── CSS Variables ── */
+      :root {
+        --bg: #0d0f14;
+        --surface: #161921;
+        --surface-2: #1e2330;
+        --border: #2a2f3e;
+        --accent: #4f8bff;
+        --accent-glow: rgba(79, 139, 255, 0.18);
+        --accent-soft: rgba(79, 139, 255, 0.08);
+        --success: #3ecf8e;
+        --warning: #f5a623;
+        --danger: #ff5b5b;
+        --text-primary: #edf0f7;
+        --text-secondary: #7b85a0;
+        --font-bn: "Hind Siliguri", sans-serif;
+        --font-ui: "Syne", sans-serif;
+        --radius: 12px;
+        --radius-sm: 8px;
+        --transition: 0.2s ease;
+      }
+
+      /* ── Reset ── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text-primary);
+        font-family: var(--font-bn);
+        font-size: 15px;
+        line-height: 1.6;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ── Scrollbar ── */
+      ::-webkit-scrollbar {
+        width: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 99px;
+      }
+
+      /* ── Animations ── */
+      @keyframes fadeSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(62, 207, 142, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 0 5px rgba(62, 207, 142, 0);
+        }
+      }
+
+      /* ── Main wrapper ── */
+      .app-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 20px 16px 32px;
+        max-width: 480px;
+        margin: 0 auto;
+        animation: fadeSlideIn 0.5s ease both;
+      }
+
+      /* ── Header ── */
+      .app-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .app-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-glow);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .app-title {
+        font-family: var(--font-ui);
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.3px;
+      }
+
+      .app-subtitle {
+        font-size: 11px;
+        color: var(--text-secondary);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      /* ── Status card ── */
+      .status-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition);
+      }
+
+      .status-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent), transparent);
+        opacity: 0;
+        transition: opacity var(--transition);
+      }
+
+      .status-card.active::before {
+        opacity: 1;
+      }
+
+      .status-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+
+      #current_word {
+        font-family: var(--font-bn);
+        font-size: 26px;
+        font-weight: 600;
+        color: var(--accent);
+        min-height: 36px;
+        word-break: break-all;
+        transition: color var(--transition);
+      }
+
+      #current_word:empty::before {
+        content: "—";
+        color: var(--border);
+        font-size: 20px;
+      }
+
+      /* ── Start button ── */
+      #start {
+        width: 100%;
+        padding: 14px 20px;
+        background: var(--accent);
+        color: #fff;
+        font-family: var(--font-bn);
+        font-size: 16px;
+        font-weight: 600;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition:
+          background var(--transition),
+          transform var(--transition),
+          box-shadow var(--transition);
+        box-shadow: 0 4px 20px rgba(79, 139, 255, 0.25);
+      }
+
+      #start::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.12) 0%,
+          transparent 60%
+        );
+        opacity: 0;
+        transition: opacity var(--transition);
+      }
+
+      #start:hover {
+        background: #3a78ff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 28px rgba(79, 139, 255, 0.38);
+      }
+      #start:hover::after {
+        opacity: 1;
+      }
+      #start:active {
+        transform: translateY(0);
+      }
+
+      /* ── Action buttons ── */
+      #button_table {
+        display: none;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      #button_table.visible {
+        display: flex;
+      }
+
+      #button_table button {
+        flex: 1;
+        min-width: 90px;
+        padding: 11px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-bn);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        background: var(--surface);
+        color: var(--text-primary);
+        transition:
+          background var(--transition),
+          border-color var(--transition),
+          transform var(--transition);
+      }
+
+      #button_table button:hover {
+        transform: translateY(-1px);
+      }
+      #button_table button:active {
+        transform: translateY(0);
+      }
+
+      #spell {
+        border-color: rgba(62, 207, 142, 0.3) !important;
+        background: rgba(62, 207, 142, 0.07) !important;
+        color: var(--success) !important;
+      }
+      #spell:hover {
+        background: rgba(62, 207, 142, 0.14) !important;
+        border-color: var(--success) !important;
+      }
+
+      #ignore {
+        border-color: var(--accent-glow) !important;
+        background: var(--accent-soft) !important;
+        color: var(--accent) !important;
+      }
+      #ignore:hover {
+        background: rgba(79, 139, 255, 0.14) !important;
+        border-color: var(--accent) !important;
+      }
+
+      #refresh {
+        border-color: rgba(245, 166, 35, 0.25) !important;
+        background: rgba(245, 166, 35, 0.06) !important;
+        color: var(--warning) !important;
+      }
+      #refresh:hover {
+        background: rgba(245, 166, 35, 0.13) !important;
+        border-color: var(--warning) !important;
+      }
+
+      /* ── Suggestions list ── */
+      #list {
+        display: none;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      #list.visible {
+        display: block;
+        animation: fadeSlideIn 0.25s ease both;
+      }
+
+      .suggestions-label {
+        padding: 10px 14px 6px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #select {
+        list-style: none;
+        padding: 6px 0;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+
+      #select li {
+        padding: 10px 16px;
+        font-size: 15px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition:
+          background var(--transition),
+          color var(--transition);
+        border-bottom: 1px solid rgba(42, 47, 62, 0.5);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      #select li:last-child {
+        border-bottom: none;
+      }
+
+      #select li::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+        opacity: 0.5;
+      }
+
+      #select li:hover {
+        background: var(--surface-2);
+        color: var(--accent);
+      }
+      #select li:hover::before {
+        opacity: 1;
+      }
+
+      /* ════════════════════════════
+         WORD HISTORY PANEL
+      ════════════════════════════ */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .panel-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      /* Clear history button */
+      .btn-clear {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-family: var(--font-bn);
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all var(--transition);
+        width: auto;
+        height: auto;
+        margin: 0;
+      }
+
+      .btn-clear:hover {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: rgba(255, 91, 91, 0.07);
+        transform: none;
+      }
+
+      /* History list */
+      #history_list {
+        list-style: none;
+        padding: 6px 0;
+        max-height: 160px;
+        overflow-y: auto;
+      }
+
+      #history_list li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(42, 47, 62, 0.5);
+        color: var(--text-secondary);
+      }
+
+      #history_list li:last-child {
+        border-bottom: none;
+      }
+
+      .history-wrong {
+        color: var(--danger);
+        text-decoration: line-through;
+        font-size: 13px;
+      }
+      .history-arrow {
+        color: var(--text-secondary);
+        font-size: 11px;
+      }
+      .history-correct {
+        color: var(--success);
+        font-size: 13px;
+      }
+      .history-ignored {
+        color: var(--text-secondary);
+        font-size: 11px;
+        background: var(--surface-2);
+        padding: 2px 7px;
+        border-radius: 99px;
+        margin-left: auto;
+      }
+
+      /* ════════════════════════════
+         CUSTOM DICTIONARY PANEL
+      ════════════════════════════ */
+
+      /* Input row */
+      .dict-input-row {
+        display: flex;
+        gap: 8px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #dict_input {
+        flex: 1;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-family: var(--font-bn);
+        font-size: 14px;
+        padding: 8px 12px;
+        outline: none;
+        transition: border-color var(--transition);
+        width: auto;
+        height: auto;
+        margin: 0;
+      }
+
+      #dict_input:focus {
+        border-color: var(--accent);
+      }
+
+      #dict_add {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-bn);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 14px;
+        cursor: pointer;
+        transition:
+          background var(--transition),
+          transform var(--transition);
+        width: auto;
+        height: auto;
+        margin: 0;
+        flex-shrink: 0;
+      }
+
+      #dict_add:hover {
+        background: #3a78ff;
+        transform: translateY(-1px);
+      }
+
+      /* Dictionary word list */
+      #dict_list {
+        list-style: none;
+        padding: 6px 0;
+        max-height: 140px;
+        overflow-y: auto;
+      }
+
+      #dict_list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 16px;
+        font-size: 14px;
+        color: var(--text-primary);
+        border-bottom: 1px solid rgba(42, 47, 62, 0.5);
+      }
+
+      #dict_list li:last-child {
+        border-bottom: none;
+      }
+
+      .dict-remove {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: color var(--transition);
+        width: auto;
+        height: auto;
+        margin: 0;
+        line-height: 1;
+      }
+
+      .dict-remove:hover {
+        color: var(--danger);
+        transform: none;
+      }
+
+      /* ── Empty state message ── */
+      .empty-msg {
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 12px;
+        padding: 14px;
+      }
+
+      /* ── Footer ── */
+      .app-footer {
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .footer-text {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        display: inline-block;
+        margin-right: 5px;
+        transition: background var(--transition);
+      }
+
+      .status-dot.running {
+        background: var(--success);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app-wrapper">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="app-logo">🔤</div>
+        <div>
+          <div class="app-title">বানান পরীক্ষক</div>
+          <div class="app-subtitle">Bengali Spell Checker · Word Add-in</div>
+        </div>
+      </header>
+
+      <!-- Start button -->
+      <button id="start">
+        <span>আরম্ভ করুন</span>
+      </button>
+
+      <!-- Status card: current misspelled word -->
+      <div class="status-card" id="status_card">
+        <div class="status-label">বর্তমান শব্দ</div>
+        <h2 id="current_word"></h2>
+      </div>
+
+      <!-- Action buttons: hidden until word found -->
+      <div id="button_table">
+        <button id="spell"><span>✓ শুদ্ধকরণ</span></button>
+        <button id="ignore"><span>↷ অগ্রাহ্য</span></button>
+        <button id="refresh"><span>↺ পুনরায়</span></button>
+      </div>
+
+      <!-- Suggestions list -->
+      <div id="list">
+        <div class="suggestions-label">পরামর্শ</div>
+        <ul id="select"></ul>
+      </div>
+
+      <!-- Word History Panel -->
+      <div class="panel" id="history_panel">
+        <div class="panel-header">
+          <span class="panel-title">📝 সংশোধন ইতিহাস</span>
+          <button class="btn-clear" id="clear_history">মুছুন</button>
+        </div>
+        <ul id="history_list"></ul>
+        <p class="empty-msg" id="history_empty">এখনো কোনো সংশোধন হয়নি।</p>
+      </div>
+
+      <!-- Custom Dictionary Panel -->
+      <div class="panel" id="dictionary_panel">
+        <div class="panel-header">
+          <span class="panel-title">📖 কাস্টম অভিধান</span>
+        </div>
+        <div class="dict-input-row">
+          <input type="text" id="dict_input" placeholder="নতুন শব্দ লিখুন..." />
+          <button id="dict_add">যোগ করুন</button>
+        </div>
+        <ul id="dict_list"></ul>
+        <p class="empty-msg" id="dict_empty">কোনো শব্দ যোগ করা হয়নি।</p>
+      </div>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <span class="footer-text">
+          <span class="status-dot" id="status_dot"></span>
+          <span id="status_text">প্রস্তুত</span>
+        </span>
+        <span class="footer-text">v1.0</span>
+      </footer>
+    </div>
+  </body>
+</html>
