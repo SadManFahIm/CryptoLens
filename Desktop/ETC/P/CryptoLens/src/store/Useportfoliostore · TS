@@ -1,0 +1,62 @@
+'use client'
+
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export interface Holding {
+  id: string // CoinGecko coin id (e.g. "bitcoin")
+  name: string
+  symbol: string
+  image: string
+  quantity: number
+  avgBuyPrice: number // in USD
+  addedAt: string // ISO string
+}
+
+interface PortfolioState {
+  holdings: Holding[]
+  addHolding: (holding: Omit<Holding, 'addedAt'>) => void
+  removeHolding: (id: string) => void
+  updateHolding: (id: string, quantity: number, avgBuyPrice: number) => void
+}
+
+const usePortfolioStore = create<PortfolioState>()(
+  persist(
+    (set) => ({
+      holdings: [],
+
+      addHolding: (holding) =>
+        set((state) => {
+          const existing = state.holdings.find((h) => h.id === holding.id)
+          if (existing) {
+            // If already exists, average the buy price and sum quantity
+            const totalQty = existing.quantity + holding.quantity
+            const avgPrice =
+              (existing.avgBuyPrice * existing.quantity + holding.avgBuyPrice * holding.quantity) /
+              totalQty
+            return {
+              holdings: state.holdings.map((h) =>
+                h.id === holding.id ? { ...h, quantity: totalQty, avgBuyPrice: avgPrice } : h
+              )
+            }
+          }
+          return {
+            holdings: [...state.holdings, { ...holding, addedAt: new Date().toISOString() }]
+          }
+        }),
+
+      removeHolding: (id) =>
+        set((state) => ({
+          holdings: state.holdings.filter((h) => h.id !== id)
+        })),
+
+      updateHolding: (id, quantity, avgBuyPrice) =>
+        set((state) => ({
+          holdings: state.holdings.map((h) => (h.id === id ? { ...h, quantity, avgBuyPrice } : h))
+        }))
+    }),
+    { name: 'crypto-portfolio' }
+  )
+)
+
+export default usePortfolioStore
